@@ -86,3 +86,12 @@ typings/
 
 # DynamoDB Local files
 .dynamodb/
+
+# Backups
+backups/
+
+# Legacy
+Legacy/config.json
+Legacy/secrets.py
+Legacy/res
+Legacy/__pycache__

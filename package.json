@@ -1,0 +1,16 @@
+{
+  "name": "backcord",
+  "version": "1.0.0",
+  "description": "Discord backup bot.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Tymec",
+  "license": "ISC",
+  "dependencies": {
+    "discord": "^0.8.2",
+    "discord-backup": "^2.1.17",
+    "dotenv": "^8.2.0"
+  }
+}
