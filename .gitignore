@@ -90,8 +90,5 @@ typings/
 # Backups
 backups/
 
-# Legacy
-Legacy/config.json
-Legacy/secrets.py
-Legacy/res
-Legacy/__pycache__
+# Config
+config/

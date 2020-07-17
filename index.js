@@ -1,116 +1,120 @@
 require('dotenv').config()
+const fs = require('fs');
 
+// Setup discord client and discord backup instance.
 const Discord = require("discord.js"),
 backup = require("discord-backup"),
+config = require('./config/config.json'),
+logger = require('./utils/logger'),
 client = new Discord.Client(),
-settings = {
-    prefix: "!!",
-    token: process.env.DISCORD_TOKEN
+cooldowns = new Discord.Collection();
+
+const Scheduler = require('./utils/scheduler');
+
+// Object hash table
+const objectTable = {
+    backup: backup,
+    subscriptions: require("./config/subscriptions.json"),
+    memberships: require("./config/memberships.json"),
+    scheduler: Scheduler(config.schedulesPath)
 };
 
+// Import commands from 'commands' directory.
+client.commands = new Discord.Collection();
+const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+for (const file of commandFiles) {
+    const command = require(`./commands/${file}`);
+	client.commands.set(command.name, command);
+}
+
+// When the discord bot is ready.
 client.on("ready", () => {
-    backup.setStorageFolder(__dirname+"/backups/");
-    console.log("I'm ready!");
+    //console.log(`Logged in as ${client.user.tag}!`);
+    logger.info(`Logged in as ${client.user.tag}.`);
+    
+    // Set discord-backup storage folder
+    backup.setStorageFolder(__dirname + '/backups');
+    //console.log("Discord-Backup is ready!");
+    logger.info("Discord-backup is ready");
 });
 
+// Command Handler
 client.on("message", async message => {
+    if (!message.content.startsWith(config.prefix) || message.author.bot || !message.guild) return;
 
-    // This reads the first part of your message behind your prefix to see which command you want to use.
-    let command = message.content.toLowerCase().slice(settings.prefix.length).split(" ")[0];
+    // Parse arguments and command name
+    let args = message.content.slice(config.prefix.length).split(/ +/);
+    let commandName = args.shift().toLowerCase();
 
-    // These are the arguments behind the commands.
-    let args = message.content.split(" ").slice(1);
+    const command = client.commands.get(commandName) || client.commands.find(cmd => cmd.aliases && cmd.aliases.includes(commandName));
+	if (!command) return;
 
-    // If the message does not start with your prefix return.
-    // If the user that types a message is a bot account return.
-    // If the command comes from DM return.
-    if (!message.content.startsWith(settings.prefix) || message.author.bot || !message.guild) return;
-
-    if(command === "create"){
-        // Check member permissions
-        if(!message.member.hasPermission("ADMINISTRATOR")){
-            return message.channel.send(":x: | You must be an administrator of this server to request a backup!");
-        }
-        // Create the backup
-        backup.create(message.guild, {
-            maxMessagesPerChannel: 1000000,
-            jsonBeautify: true
-        }).then((backupData) => {
-            // And send informations to the backup owner
-            message.author.send("The backup has been created! To load it, type this command on the server of your choice: `"+settings.prefix+"load "+backupData.id+"`!");
-            message.channel.send(":white_check_mark: Backup successfully created. The backup ID was sent in dm!");
-        });
+    // Check if command is getting executed in a guild text channel
+    if (command.guildOnly && message.channel.type !== 'text') {
+        return message.reply('I can\'t execute that command inside DMs!');
     }
 
-    if(command === "load"){
-        // Check member permissions
-        if(!message.member.hasPermission("ADMINISTRATOR")){
-            return message.channel.send(":x: | You must be an administrator of this server to load a backup!");
-        }
-        let backupID = args[0];
-        if(!backupID){
-            return message.channel.send(":x: | You must specify a valid backup ID!");
-        }
-        // Fetching the backup to know if it exists
-        backup.fetch(backupID).then(async () => {
-            // If the backup exists, request for confirmation
-            message.channel.send(":warning: | When the backup is loaded, all the channels, roles, etc. will be replaced! Type `-confirm` to confirm!");
-                await message.channel.awaitMessages(m => (m.author.id === message.author.id) && (m.content === "-confirm"), {
-                    max: 1,
-                    time: 20000,
-                    errors: ["time"]
-                }).catch((err) => {
-                    // if the author of the commands does not confirm the backup loading
-                    return message.channel.send(":x: | Time's up! Cancelled backup loading!");
-                });
-                // When the author of the command has confirmed that he wants to load the backup on his server
-                message.author.send(":white_check_mark: | Start loading the backup!");
-                // Load the backup
-                backup.load(backupID, message.guild, {
-                    clearGuildBeforeRestore: true,
-                    maxMessagesPerChannel: 1000000
-                }).then(() => {
-                    // When the backup is loaded, delete them from the server
-                    // backup.remove(backupID);
-                }).catch((err) => {
-                    // If an error occurred
-                    return message.author.send(":x: | Sorry, an error occurred... Please check that I have administrator permissions!");
-                });
-        }).catch((err) => {
-            console.log(err);
-            // if the backup wasn't found
-            return message.channel.send(":x: | No backup found for `"+backupID+"`!");
-        });
+    // Check member permissions
+    if(command.adminOnly && !message.member.hasPermission("ADMINISTRATOR")){
+        return message.channel.send(":x: | You must be an administrator of this server to use this command!");
     }
 
-    if(command === "infos"){
-        let backupID = args[0];
-        if(!backupID){
-            return message.channel.send(":x: | You must specify a valid backup ID!");
+    // Arguments validator
+    /*
+    if (command.args && !args.length) {
+        let reply = `You didn't provide any arguments, ${message.author}`;
+        if (command.usage) {
+            reply += `\nThe proper usage would be: \`${config.prefix}${command.name} ${command.usage}\``;
         }
-        // Fetch the backup
-        backup.fetch(backupID).then((backupInfos) => {
-            const date = new Date(backupInfos.data.createdTimestamp);
-            const yyyy = date.getFullYear().toString(), mm = (date.getMonth()+1).toString(), dd = date.getDate().toString();
-            const formatedDate = `${yyyy}/${(mm[1]?mm:"0"+mm[0])}/${(dd[1]?dd:"0"+dd[0])}`;
-            let embed = new Discord.MessageEmbed()
-                .setAuthor("Backup Informations")
-                // Display the backup ID
-                .addField("Backup ID", backupInfos.id, false)
-                // Displays the server from which this backup comes
-                .addField("Server ID", backupInfos.data.guildID, false)
-                // Display the size (in mb) of the backup
-                .addField("Size", `${backupInfos.size} mb`, false)
-                // Display when the backup was created
-                .addField("Created at", formatedDate, false)
-                .setColor("#FF0000");
-            message.channel.send(embed);
-        }).catch((err) => {
-            // if the backup wasn't found
-            return message.channel.send(":x: | No backup found for `"+backupID+"`!");
-        });
+
+        return message.channel.send(reply);
+    }
+    */
+
+    // Cooldown
+    if (!cooldowns.has(command.name)) {
+        cooldowns.set(command.name, new Discord.Collection());
+    }
+    
+    const now = Date.now();
+    const timestamps = cooldowns.get(command.name);
+    const cooldownAmount = (command.cooldown || 3) * 1000;
+    
+    if (timestamps.has(message.author.id)) {
+        const expirationTime = timestamps.get(message.author.id) + cooldownAmount;
+
+        if (now < expirationTime) {
+            const timeLeft = (expirationTime - now) / 1000;
+            return message.reply(`Please wait ${timeLeft.toFixed(1)} more second(s) before reusing the \`${command.name}\` command.`);
+        }
+
+        timestamps.set(message.author.id, now);
+        setTimeout(() => timestamps.delete(message.author.id), cooldownAmount);
     }
 
+    // Fetch required parameters
+    let params = {};
+    command.params.forEach(param => {
+        /*
+        try {
+            let val = eval(param);
+        } catch(err) {
+            console.log(err.message);
+            continue;
+        }
+        params[param] = val;
+        */
+        params[param] = objectTable[param];
+    });
+
+    try {
+        // Execute command
+        command.execute(message, args, params);
+    } catch (err) {
+        //console.error(err);
+        logger.error(err)
+        message.reply('Server error while trying to execute command.');
+    }
 });
 
-client.login(settings.token);
+client.login(config.token);
