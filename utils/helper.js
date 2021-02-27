@@ -31,9 +31,7 @@ function checkPermission(memberships, userId, key, value) {
             let idx = Object.keys(perks).indexOf(key);
 
             // Check if user's permission is bigger or equal to the required permission
-            if (tierPerms[idx] >= requiredPermission) {
-                return true;
-            }
+            if (tierPerms[idx] >= requiredPermission) { return true; }
         }
     }
 

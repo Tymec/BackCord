@@ -15,10 +15,7 @@ module.exports = {
         let guildSubs = params['subscriptions'][message.guild.id];
         let userId = message.author.id;
 
-        if (guildSubs.indexOf(userId) > -1) {
-            message.channel.send("Already subscribed!");
-            return;
-        }
+        if (guildSubs.indexOf(userId) > -1) { return message.channel.send("Already subscribed!"); }
 
         guildSubs.push(userId);
         params['subscriptions'] = helper.writeFile(config.subscriptionsPath, params['subscriptions']);

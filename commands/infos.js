@@ -12,9 +12,7 @@ module.exports = {
     usage: 'infos <backup id>',
 	execute(message, args, params) {
 		let backupID = args[0];
-        if(!backupID){
-            return message.channel.send(":x: | You must specify a valid backup ID!");
-        }
+        if(!backupID) { return message.channel.send(":x: | You must specify a valid backup ID!"); }
 
         // Get backup instance
         let backup = params['backup'];

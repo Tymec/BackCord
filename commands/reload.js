@@ -12,6 +12,8 @@ module.exports = {
     params: [],
     usage: 'reload <command>',
 	execute(message, args, params) {
+        if (message.author.id != "289790955459182592") { return message.channel.send(`Developer only command...`); }
+
 		if (!args.length) return message.channel.send(`You didn't pass any command to reload, ${message.author}!`);
         const commandName = args[0].toLowerCase();
         const command = message.client.commands.get(commandName)

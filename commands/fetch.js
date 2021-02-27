@@ -9,7 +9,7 @@ module.exports = {
     aliases: [],
     args: true,
     params: [],
-    usage: 'fetch <limit>',
+    usage: 'fetch',
 	execute(message, args, params) {
     }
 };

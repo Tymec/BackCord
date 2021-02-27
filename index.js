@@ -9,14 +9,11 @@ logger = require('./utils/logger'),
 client = new Discord.Client(),
 cooldowns = new Discord.Collection();
 
-const Scheduler = require('./utils/scheduler');
-
 // Object hash table
 const objectTable = {
     backup: backup,
     subscriptions: require("./config/subscriptions.json"),
     memberships: require("./config/memberships.json"),
-    scheduler: Scheduler(config.schedulesPath)
 };
 
 // Import commands from 'commands' directory.

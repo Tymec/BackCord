@@ -15,13 +15,12 @@ module.exports = {
 	execute(message, args, params) {
         let schedule = args[0];
 
+        if (!schedule) { return message.channel.send(`No schedule specified... Usage: ${usage}`); }
+
         // Check user's tier
         let isAllowed = helper.checkPermission(params['memberships'], message.author.id, "schedule", schedule);
         let userTier = helper.getUserTier(params['memberships'], message.author.id);
-        if (!isAllowed) {
-            message.channel.send(`Not allowed to use schedule \`${schedule}\` with tier \`${userTier}\``);
-            return;
-        }
+        if (!isAllowed) { return message.channel.send(`Not allowed to use schedule \`${schedule}\` with tier \`${userTier}\``); }
 
         let webhook = {};
         const newWebhook = message.channel.createWebhook("Backup Webhook", {})
